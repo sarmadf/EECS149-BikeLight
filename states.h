@@ -1,8 +1,8 @@
-enum brake_light {driveing,
-	              braking};
+enum brakes {driving,
+            braking};
 
-enum turn_light {noTurn,
-				 left,
-				 right};
+enum turn {noTurn,
+            left,
+            right};
 
 

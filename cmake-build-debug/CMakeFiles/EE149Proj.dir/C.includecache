@@ -1,0 +1,22 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/Users/tonyshara/fall2019/149/final_proj/EECS149-BikeLight/states.h
+
+/Users/tonyshara/fall2019/149/final_proj/EECS149-BikeLight/turn.c
+stdio.h
+-
+pthread.h
+-
+states.h
+/Users/tonyshara/fall2019/149/final_proj/EECS149-BikeLight/states.h
+turn.h
+/Users/tonyshara/fall2019/149/final_proj/EECS149-BikeLight/turn.h
+
+/Users/tonyshara/fall2019/149/final_proj/EECS149-BikeLight/turn.h
+

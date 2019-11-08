@@ -6,12 +6,18 @@
 // interupt handler (takes care of brake, left, right events)
 
 void * brake(){
-    printf("brake\n");
+    //printf("brake\n");
+    //create new brake listener
+    for(int c = 0; c < 5; c++){
+        is_braking(c);
+    }
     return NULL;
 }
 
 void * turn(){
-    printf("turn\n");
+    //printf("turn\n");
+    //create new turn listener
+    track_turning();
     return NULL;
 }
 
