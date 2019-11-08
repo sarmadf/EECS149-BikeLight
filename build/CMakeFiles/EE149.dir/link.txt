@@ -1,0 +1,1 @@
+/Library/Developer/CommandLineTools/usr/bin/cc  -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk -Wl,-search_paths_first -Wl,-headerpad_max_install_names  CMakeFiles/EE149.dir/main.c.o CMakeFiles/EE149.dir/brakes.c.o CMakeFiles/EE149.dir/turn.c.o CMakeFiles/EE149.dir/states.c.o  -o EE149 
