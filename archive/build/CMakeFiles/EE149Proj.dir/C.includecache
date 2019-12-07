@@ -1,0 +1,44 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/Users/tonyshara/fall2019/149/final_proj/EECS149-BikeLight/brakes.h
+
+/Users/tonyshara/fall2019/149/final_proj/EECS149-BikeLight/main.c
+stdio.h
+-
+pthread.h
+-
+stdbool.h
+-
+stdint.h
+-
+stdio.h
+-
+app_error.h
+/Users/tonyshara/fall2019/149/final_proj/EECS149-BikeLight/app_error.h
+nrf.h
+/Users/tonyshara/fall2019/149/final_proj/EECS149-BikeLight/nrf.h
+nrf_delay.h
+/Users/tonyshara/fall2019/149/final_proj/EECS149-BikeLight/nrf_delay.h
+nrf_log.h
+/Users/tonyshara/fall2019/149/final_proj/EECS149-BikeLight/nrf_log.h
+nrf_log_ctrl.h
+/Users/tonyshara/fall2019/149/final_proj/EECS149-BikeLight/nrf_log_ctrl.h
+nrf_log_default_backends.h
+/Users/tonyshara/fall2019/149/final_proj/EECS149-BikeLight/nrf_log_default_backends.h
+nrf_pwr_mgmt.h
+/Users/tonyshara/fall2019/149/final_proj/EECS149-BikeLight/nrf_pwr_mgmt.h
+nrf_serial.h
+/Users/tonyshara/fall2019/149/final_proj/EECS149-BikeLight/nrf_serial.h
+brakes.h
+/Users/tonyshara/fall2019/149/final_proj/EECS149-BikeLight/brakes.h
+turn.h
+/Users/tonyshara/fall2019/149/final_proj/EECS149-BikeLight/turn.h
+
+/Users/tonyshara/fall2019/149/final_proj/EECS149-BikeLight/turn.h
+
