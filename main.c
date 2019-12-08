@@ -1,9 +1,10 @@
-// Drive the Kobuki robot in a square using the internal gyroscope
+// Button and Switch app
+//
+// Uses a button and a switch to control LEDs
 
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <math.h>
 #include <sys/time.h>
 
 #include "app_error.h"
@@ -17,41 +18,55 @@
 #include "nrf_pwr_mgmt.h"
 #include "nrf_serial.h"
 
+#include "mpu9250.h"
+
 #include "buckler.h"
-#include "kobukiActuator.h"
-#include "kobukiSensorTypes.h"
-#include "kobukiSensorPoll.h"
-#include "kobukiUtilities.h"
 
-typedef enum {
-  NONE,
-  LEFT,
-  RIGHT,
-  DELAY_L,
-  DELAY_R,
-  WAIT
-} TurningState_t;
+#define BASE 0
+#define WAIT 1
+#define LEFT 2
+#define RIGHT 3 
 
-#define BUCKLER_BUTTON0 NRF_GPIO_PIN_MAP(0,28)
+#define BUFFER_LENGTH 5
 
-bool getButtonState(){
-	return nrfx_gpiote_in_is_set(BUCKLER_BUTTON0);
+// LED array
+static uint8_t LEDS[3] = {BUCKLER_LED0, BUCKLER_LED1, BUCKLER_LED2};
+
+int buttonIsPressed() {
+	return !nrfx_gpiote_in_is_set(BUCKLER_BUTTON0);
+}
+
+float getSquaredAngle() {
+	return 950;
+}
+
+
+// handler called whenever an input pin changes
+void pin_change_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action) {
+  switch(pin) {
+    case BUCKLER_BUTTON0: {
+      if (nrfx_gpiote_in_is_set(BUCKLER_BUTTON0)) {
+        nrfx_gpiote_out_set(LEDS[0]);
+      } else {
+        nrfx_gpiote_out_clear(LEDS[0]);
+      }
+      break;
+    }
+
+    case BUCKLER_SWITCH0: {
+      if (nrfx_gpiote_in_is_set(BUCKLER_SWITCH0)) {
+        nrfx_gpiote_out_set(LEDS[1]);
+        nrfx_gpiote_out_clear(LEDS[2]);
+      } else {
+        nrfx_gpiote_out_clear(LEDS[1]);
+        nrfx_gpiote_out_set(LEDS[2]);
+      }
+      break;
+    }
+  }
 }
 
 int main(void) {
-
-  // initialize Kobuki library
-//  kobukiInit();
-
-  // initialize RTT library
-  NRF_LOG_INIT(NULL);
-  NRF_LOG_DEFAULT_BACKENDS_INIT();
-  printf("Initialized RTT!\n");
-
-  // initialize state
-  TurningState_t state = NONE;
-//  KobukiSensors_t initial_sensors;
-//  kobukiSensorPoll(&initial_sensors);
   ret_code_t error_code = NRF_SUCCESS;
 
   // initialize power management
@@ -64,34 +79,119 @@ int main(void) {
   }
   APP_ERROR_CHECK(error_code);
 
+  // configure leds
+  // manually-controlled (simple) output, initially set
   nrfx_gpiote_out_config_t out_config = NRFX_GPIOTE_CONFIG_OUT_SIMPLE(true);
-  
+  for (int i=0; i<3; i++) {
+    error_code = nrfx_gpiote_out_init(LEDS[i], &out_config);
+    APP_ERROR_CHECK(error_code);
+  }
+
+  // configure button and switch
+  // input pin, trigger on either edge, low accuracy (allows low-power operation)
   nrfx_gpiote_in_config_t in_config = NRFX_GPIOTE_CONFIG_IN_SENSE_TOGGLE(false);
   in_config.pull = NRF_GPIO_PIN_NOPULL;
-  // error_code = nrfx_gpiote_in_init(BUCKLER_BUTTON0, &in_config, pin_change_handler);
+  error_code = nrfx_gpiote_in_init(BUCKLER_BUTTON0, &in_config, pin_change_handler);
   nrfx_gpiote_in_event_enable(BUCKLER_BUTTON0, true);
 
+  in_config.pull = NRF_GPIO_PIN_NOPULL;
+  error_code = nrfx_gpiote_in_init(BUCKLER_SWITCH0, &in_config, pin_change_handler);
+  nrfx_gpiote_in_event_enable(BUCKLER_SWITCH0, true);
+
+  // set initial states for LEDs
+  nrfx_gpiote_out_set(LEDS[0]);
+  if (nrfx_gpiote_in_is_set(BUCKLER_SWITCH0)) {
+    nrfx_gpiote_out_set(LEDS[1]);
+    nrfx_gpiote_out_clear(LEDS[2]);
+  } else {
+    nrfx_gpiote_out_clear(LEDS[1]);
+    nrfx_gpiote_out_set(LEDS[2]);
+  }
+
+  
   // loop forever
-  uint8_t i = 0;
+  int state = BASE;
+  int buttonBuffer[BUFFER_LENGTH];
+  bool isPressed = false;
+
+  for (int i = 0; i < BUFFER_LENGTH; i++){
+	buttonBuffer[i] = 0;
+  }
+  unsigned long long currentTime = 0;
+  unsigned long long releaseTime = 0;
+
+  printf("STATE: %d\n", state);
+
   while (1) {
-  	bool buttonState = getButtonState();
-	printf("%d%d%d%d%d%d\n", buttonState, buttonState, buttonState, buttonState, buttonState, buttonState);
-    // test current state
-    switch (state) {
-      case NONE: 
-	  	if (true) {
-			state = NONE;
-        } else {
-			state = NONE;
+    bool allOne = true;
+    bool allZero = true;
+	currentTime++;
+    // printf("time: %llu\n", currentTime);
+
+	int buttonState = buttonIsPressed() ? 1 : 0;
+	for (int i = 0; i < BUFFER_LENGTH - 1; i++) {
+		buttonBuffer[i] = buttonBuffer[i+1];
+	}
+	buttonBuffer[BUFFER_LENGTH - 1] = buttonState;
+
+	for (int i = 0; i < BUFFER_LENGTH; i++) {
+		allOne &= buttonBuffer[i] == 1 ? 0 : 1;
+		allZero &= buttonBuffer[i] == 0 ? 0 : 1;
+	}
+
+	float angle = getSquaredAngle();
+
+	// printf("current time: %llu", currentTime);
+	// printf("release time: %llu", releaseTime);
+	 
+  	switch(state) {
+	  case BASE: 
+	    if (!isPressed && allOne) {
+			nrf_delay_ms(50);
+			isPressed = true;
+			state = BASE;
+		} else if (isPressed && allZero) {
+			nrf_delay_ms(50);
+			isPressed = false;
+
+			releaseTime = currentTime;
+			state = WAIT;
+  printf("STATE: %d\n", state);
+		} else {
+			state = BASE;
 		}
 
-        break;	
-    };
+		break;
+	  case WAIT: 
+	  	if (currentTime - releaseTime > 5000000) {
+		    state = LEFT;
+  printf("STATE: %d\n", state);
+		} else if (!isPressed && allOne) {
+			printf("pressed ACTIVATED\n");
+			nrf_delay_ms(50);
+			isPressed = true;
+			state = WAIT;
+		} else if (isPressed && allZero) {
+			printf("unpressed ACTIVATED\n");
+			nrf_delay_ms(50);
+			isPressed = false;
+			state = RIGHT;
+  printf("STATE: %d\n", state);
+		}
 
-    // continue for 10 ms before checking state again
-    nrf_delay_ms(10);
-	printf("OOJOJOJADSFASLDFJ\n");
+		break;
+
+	  case LEFT: 
+	  	if (angle < 900) state = BASE;
+  printf("STATE: %d\n", state);
+		break;
+	  case RIGHT: 
+	  	if (angle < 900) state = BASE;
+  printf("STATE: %d\n", state);
+		break;
+	}
   }
 }
+
 
 
