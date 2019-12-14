@@ -17,7 +17,7 @@
 #include "nrf_log_default_backends.h"
 #include "nrf_pwr_mgmt.h"
 #include "nrf_serial.h"
-
+#include "gpio.h"
 #include "mpu9250.h"
 
 #include "buckler.h"
@@ -26,8 +26,76 @@
 #define WAIT 1
 #define LEFT 2
 #define RIGHT 3 
-
 #define BUFFER_LENGTH 5
+#define HALL_SENSOR 4
+#define LED 23
+#define LOW 0
+#define HIGH 1
+
+
+
+
+/*If the hall sensor is near the magnet whose south pole is facing up, */
+/*it will return ture, otherwise it will return false.        */
+bool isNearMagnet()
+{
+  int sensorValue = gpio_read(HALL_SENSOR);
+  if(sensorValue == LOW)//if the sensor value is LOW?
+  {
+    return true;//yes,return ture
+  }
+  else
+  {
+    return false;//no,return false
+  }
+  
+}
+
+void turnOnLED()
+{
+  gpio_clear(LED);
+}
+void turnOffLED()
+{
+  gpio_set(LED);
+}
+
+ 
+void pinsInit()
+{
+  gpio_config(24,OUTPUT);
+  gpio_config(25,OUTPUT);
+  gpio_set(24);
+  gpio_set(25);
+  gpio_config(HALL_SENSOR, INPUT);
+  gpio_config(LED, OUTPUT);
+}
+
+void loop() 
+{
+  if(isNearMagnet())//if the hall sensor is near the magnet?
+  {
+    turnOnLED();
+    nrf_delay_ms(1000);
+  }
+  else
+  {
+    turnOffLED();
+    nrf_delay_ms(1000);
+  }
+}
+
+void setup()
+{
+  pinsInit();
+}
+
+void GPIOTE_IRQnHandler(void){
+  printf("yeeeeeeee");
+  gpio_set(LED);
+  gpio_clear(25);
+  gpio_clear(24);
+}
 
 // LED array
 static uint8_t LEDS[3] = {BUCKLER_LED0, BUCKLER_LED1, BUCKLER_LED2};
@@ -72,124 +140,73 @@ int main(void) {
   // initialize power management
   error_code = nrf_pwr_mgmt_init();
   APP_ERROR_CHECK(error_code);
-
+  NRF_LOG_DEFAULT_BACKENDS_INIT();
   // initialize GPIO driver
   if (!nrfx_gpiote_is_init()) {
     error_code = nrfx_gpiote_init();
   }
   APP_ERROR_CHECK(error_code);
 
+  // NRF_GPIOTE->CONFIG[0] |= 1 << 12;
+  // NRF_GPIOTE->CONFIG[0] |= 1 << 11;
+  // NRF_GPIOTE->CONFIG[0] |= 1 << 10;
+  // NRF_GPIOTE->CONFIG[0] |= 1 << 17; // pg 161
+  //  NRF_GPIOTE->CONFIG[0] |= 1;
+  // NRF_GPIOTE->INTENSET |= 1;
+  // NVIC_EnableIRQ(GPIOTE_IRQn);
+  // NVIC_SetPriority(GPIOTE_IRQn,1);
+  nrfx_gpiote_in_config_t in_config = NRFX_GPIOTE_CONFIG_IN_SENSE_HITOLO(true);
+  nrfx_gpiote_in_init(BUCKLER_GROVE_A0, &in_config, GPIOTE_IRQnHandler);
+  nrfx_gpiote_in_event_enable(BUCKLER_GROVE_A0, true);
+
+  // nrfx_gpiote_in_config_t in_config = NRFX_GPIOTE_CONFIG_IN_SENSE_TOGGLE(false);
+  // in_config.pull = NRF_GPIO_PIN_NOPULL;
+  // error_code = nrfx_gpiote_in_init(BUCKLER_BUTTON0, &in_config, pin_change_handler);
+  // nrfx_gpiote_in_event_enable(BUCKLER_BUTTON0, true);
+  // in_config.pull = NRF_GPIO_PIN_NOPULL;
+  // error_code = nrfx_gpiote_in_init(BUCKLER_SWITCH0, &in_config, pin_change_handler);
+  // nrfx_gpiote_in_event_enable(BUCKLER_SWITCH0, true);
+  // pin_change_handler(0, 0);
+  
+
+
   // configure leds
   // manually-controlled (simple) output, initially set
-  nrfx_gpiote_out_config_t out_config = NRFX_GPIOTE_CONFIG_OUT_SIMPLE(true);
-  for (int i=0; i<3; i++) {
-    error_code = nrfx_gpiote_out_init(LEDS[i], &out_config);
-    APP_ERROR_CHECK(error_code);
-  }
+  // nrfx_gpiote_out_config_t out_config = NRFX_GPIOTE_CONFIG_OUT_SIMPLE(true);
+  // for (int i=0; i<3; i++) {
+  //   error_code = nrfx_gpiote_out_init(LEDS[i], &out_config);
+  //   APP_ERROR_CHECK(error_code);
+  // }
 
   // configure button and switch
   // input pin, trigger on either edge, low accuracy (allows low-power operation)
-  nrfx_gpiote_in_config_t in_config = NRFX_GPIOTE_CONFIG_IN_SENSE_TOGGLE(false);
-  in_config.pull = NRF_GPIO_PIN_NOPULL;
-  error_code = nrfx_gpiote_in_init(BUCKLER_BUTTON0, &in_config, pin_change_handler);
-  nrfx_gpiote_in_event_enable(BUCKLER_BUTTON0, true);
+  // nrfx_gpiote_in_config_t in_config = NRFX_GPIOTE_CONFIG_IN_SENSE_TOGGLE(false);
+  // in_config.pull = NRF_GPIO_PIN_NOPULL;
+  // error_code = nrfx_gpiote_in_init(BUCKLER_BUTTON0, &in_config, pin_change_handler);
+  // nrfx_gpiote_in_event_enable(BUCKLER_BUTTON0, true);
 
-  in_config.pull = NRF_GPIO_PIN_NOPULL;
-  error_code = nrfx_gpiote_in_init(BUCKLER_SWITCH0, &in_config, pin_change_handler);
-  nrfx_gpiote_in_event_enable(BUCKLER_SWITCH0, true);
+  // in_config.pull = NRF_GPIO_PIN_NOPULL;
+  // error_code = nrfx_gpiote_in_init(BUCKLER_SWITCH0, &in_config, pin_change_handler);
+  // nrfx_gpiote_in_event_enable(BUCKLER_SWITCH0, true);
 
   // set initial states for LEDs
-  nrfx_gpiote_out_set(LEDS[0]);
-  if (nrfx_gpiote_in_is_set(BUCKLER_SWITCH0)) {
-    nrfx_gpiote_out_set(LEDS[1]);
-    nrfx_gpiote_out_clear(LEDS[2]);
-  } else {
-    nrfx_gpiote_out_clear(LEDS[1]);
-    nrfx_gpiote_out_set(LEDS[2]);
-  }
+  // nrfx_gpiote_out_set(LEDS[0]);
+  // if (nrfx_gpiote_in_is_set(BUCKLER_SWITCH0)) {
+  //   nrfx_gpiote_out_set(LEDS[1]);
+  //   nrfx_gpiote_out_clear(LEDS[2]);
+  // } else {
+  //   nrfx_gpiote_out_clear(LEDS[1]);
+  //   nrfx_gpiote_out_set(LEDS[2]);
+  // }
+
+  setup();
 
   
   // loop forever
-  int state = BASE;
-  int buttonBuffer[BUFFER_LENGTH];
-  bool isPressed = false;
-
-  for (int i = 0; i < BUFFER_LENGTH; i++){
-	buttonBuffer[i] = 0;
-  }
-  unsigned long long currentTime = 0;
-  unsigned long long releaseTime = 0;
-
-  printf("STATE: %d\n", state);
-
   while (1) {
-    bool allOne = true;
-    bool allZero = true;
-	currentTime++;
-    // printf("time: %llu\n", currentTime);
+    // loop();
+    gpio_set(23);
 
-	int buttonState = buttonIsPressed() ? 1 : 0;
-	for (int i = 0; i < BUFFER_LENGTH - 1; i++) {
-		buttonBuffer[i] = buttonBuffer[i+1];
-	}
-	buttonBuffer[BUFFER_LENGTH - 1] = buttonState;
-
-	for (int i = 0; i < BUFFER_LENGTH; i++) {
-		allOne &= buttonBuffer[i] == 1 ? 0 : 1;
-		allZero &= buttonBuffer[i] == 0 ? 0 : 1;
-	}
-
-	float angle = getSquaredAngle();
-
-	// printf("current time: %llu", currentTime);
-	// printf("release time: %llu", releaseTime);
-	 
-  	switch(state) {
-	  case BASE: 
-	    if (!isPressed && allOne) {
-			nrf_delay_ms(50);
-			isPressed = true;
-			state = BASE;
-		} else if (isPressed && allZero) {
-			nrf_delay_ms(50);
-			isPressed = false;
-
-			releaseTime = currentTime;
-			state = WAIT;
-  printf("STATE: %d\n", state);
-		} else {
-			state = BASE;
-		}
-
-		break;
-	  case WAIT: 
-	  	if (currentTime - releaseTime > 5000000) {
-		    state = LEFT;
-  printf("STATE: %d\n", state);
-		} else if (!isPressed && allOne) {
-			printf("pressed ACTIVATED\n");
-			nrf_delay_ms(50);
-			isPressed = true;
-			state = WAIT;
-		} else if (isPressed && allZero) {
-			printf("unpressed ACTIVATED\n");
-			nrf_delay_ms(50);
-			isPressed = false;
-			state = RIGHT;
-  printf("STATE: %d\n", state);
-		}
-
-		break;
-
-	  case LEFT: 
-	  	if (angle < 900) state = BASE;
-  printf("STATE: %d\n", state);
-		break;
-	  case RIGHT: 
-	  	if (angle < 900) state = BASE;
-  printf("STATE: %d\n", state);
-		break;
-	}
   }
 }
 
