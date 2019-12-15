@@ -19,9 +19,9 @@
 #include "nrf_serial.h"
 #include "gpio.h"
 #include "mpu9250.h"
-
+#include "display.h"
 #include "buckler.h"
-
+#include "virtual_timer.h"
 #define BASE 0
 #define WAIT 1
 #define LEFT 2
@@ -33,8 +33,23 @@
 #define HIGH 1
 
 
+int rpm_count = 0;
+int time_old = 0;
+int rpm = 0;//revolutions per minute
+int rotating_time = 0;
 
+// uint32_t millis(void)
+// {
+//   return(app_timer_cnt_get() / 32.768);
+// }
 
+// #define OVERFLOW ((uint32_t)(0xFFFFFFFF/32.768))
+
+// uint32_t compareMillis(uint32_t previousMillis, uint32_t currentMillis)
+// {
+//   if(currentMillis < previousMillis) return(currentMillis + OVERFLOW + 1 - previousMillis);
+//   return(currentMillis - previousMillis);
+// }
 /*If the hall sensor is near the magnet whose south pole is facing up, */
 /*it will return ture, otherwise it will return false.        */
 bool isNearMagnet()
@@ -73,17 +88,49 @@ void pinsInit()
 
 void loop() 
 {
-  if(isNearMagnet())//if the hall sensor is near the magnet?
-  {
-    turnOnLED();
-    nrf_delay_ms(1000);
+  // if(isNearMagnet())//if the hall sensor is near the magnet?
+  // {
+  //   turnOnLED();
+  //   nrf_delay_ms(1000);
+  // }
+  // else
+  // {
+  //   turnOffLED();
+  //   nrf_delay_ms(1000);
+  // }
+  
+  if (rpm_count == 1) {
+		time_old = read_timer();
+    // printf("time=%d\n", time_old);
   }
-  else
-  {
-    turnOffLED();
-    nrf_delay_ms(1000);
-  }
+	else if (rpm_count > 20) 
+	{ 
+    printf("timer old:%d\n",time_old);
+    printf("current time %d\n", read_timer());
+		rotating_time = (read_timer() - time_old) / 1000;
+		printf("rotating timer:%d\n",rotating_time);
+    //Update RPM every 20 counts, increase this for better RPM resolution,
+		//decrease for faster update
+		rpm = 60000/rotating_time*(rpm_count-1);//1 min = 60000ms
+		rpm_count = 0;
+    char buf[32] = {0};
+    snprintf(buf, 32, "%u", rpm);
+    // printf()
+    display_write(buf, rpm);
+    printf("rpm:%d\n",rpm);
+    int bike_wheel = 151;
+    int mph = (151 * rpm * 60) / 63360;
+    printf("mph: %d", mph);
+		// Serial.println(rpm, DEC);
+	}
 }
+ 
+
+
+// void rpm_fun()
+// {
+// 	rpmcount++;
+// }
 
 void setup()
 {
@@ -91,10 +138,20 @@ void setup()
 }
 
 void GPIOTE_IRQnHandler(void){
-  printf("yeeeeeeee");
+  // printf("yeeeeeeee");
   gpio_set(LED);
-  gpio_clear(25);
-  gpio_clear(24);
+  // gpio_clear(25);
+  // gpio_clear(24);
+  // void rpm_fun()
+
+	rpm_count++;
+  printf("rpm count:%d\n",rpm_count);
+
+}
+
+void led0_toggle() {
+  //  loop();
+  
 }
 
 // LED array
@@ -147,6 +204,27 @@ int main(void) {
   }
   APP_ERROR_CHECK(error_code);
 
+  // initialize spi master
+  nrf_drv_spi_t spi_instance = NRF_DRV_SPI_INSTANCE(1);
+  nrf_drv_spi_config_t spi_config = {
+    .sck_pin = BUCKLER_LCD_SCLK,
+    .mosi_pin = BUCKLER_LCD_MOSI,
+    .miso_pin = BUCKLER_LCD_MISO,
+    .ss_pin = BUCKLER_LCD_CS,
+    .irq_priority = NRFX_SPI_DEFAULT_CONFIG_IRQ_PRIORITY,
+    .orc = 0,
+    .frequency = NRF_DRV_SPI_FREQ_4M,
+    .mode = NRF_DRV_SPI_MODE_2,
+    .bit_order = NRF_DRV_SPI_BIT_ORDER_MSB_FIRST
+  };
+  error_code = nrf_drv_spi_init(&spi_instance, &spi_config, NULL, NULL);
+  APP_ERROR_CHECK(error_code);
+
+  // initialize display driver
+  display_init(&spi_instance);
+  printf("Display initialized\n");
+  nrf_delay_ms(1000);
+
   // NRF_GPIOTE->CONFIG[0] |= 1 << 12;
   // NRF_GPIOTE->CONFIG[0] |= 1 << 11;
   // NRF_GPIOTE->CONFIG[0] |= 1 << 10;
@@ -158,7 +236,8 @@ int main(void) {
   nrfx_gpiote_in_config_t in_config = NRFX_GPIOTE_CONFIG_IN_SENSE_HITOLO(true);
   nrfx_gpiote_in_init(BUCKLER_GROVE_A0, &in_config, GPIOTE_IRQnHandler);
   nrfx_gpiote_in_event_enable(BUCKLER_GROVE_A0, true);
-
+  virtual_timer_init();
+  uint32_t timer0_on = virtual_timer_start_repeated(1000, led0_toggle);
   // nrfx_gpiote_in_config_t in_config = NRFX_GPIOTE_CONFIG_IN_SENSE_TOGGLE(false);
   // in_config.pull = NRF_GPIO_PIN_NOPULL;
   // error_code = nrfx_gpiote_in_init(BUCKLER_BUTTON0, &in_config, pin_change_handler);
@@ -204,8 +283,10 @@ int main(void) {
   
   // loop forever
   while (1) {
-    // loop();
-    gpio_set(23);
+    loop();
+    // gpio_set(23);
+    
+    // nrf_delay_ms(1000);
 
   }
 }
