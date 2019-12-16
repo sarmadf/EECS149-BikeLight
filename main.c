@@ -36,6 +36,7 @@ int time_start = 0; //keeps track of time after hall sensor senses the first rev
 int rpm = 0; //revolutions per minute
 int mph = 0; //keep track of current speed in MPH
 int rotating_time = 0; // time taken for rotatation to complete
+bool timer_started = false;
 
 
 //interrupt handler for whenever hall sensor senses magnet come around
@@ -67,21 +68,40 @@ void turnOffLED(){
 }
 
 int update_speed(){
-  if (rpm_count == 1) {
+  // TODO: add conditon to make sure that insane rpm cannot be true
+  if (rpm_count == 1 && timer_started == false) {
+    printf("rpm count = 1\n");
 		time_start = read_timer();
+    timer_started = true;
   }
-	else if (rpm_count > 2){
+	else if (rpm_count >= 2){
     //higher rpm_count will result in a better reading of speed
+    printf("rpm count >= 2\n");
+    printf("timer start: %d\n", time_start);
 		rotating_time = (read_timer() - time_start) / 1000;
+    printf("rotating_time: %d\n",rotating_time);
 		rpm = 60000/rotating_time*(rpm_count-1);//1 min = 60000ms
+    printf("rpm: %d\n",rpm);
 		rpm_count = 0;
-    char buf[32] = {0};
-    int bike_wheel = 151;
-    mph = (151 * rpm * 60) / 63360;
-    snprintf(buf, 32, "%u", mph);
-    display_write("speed mph", DISPLAY_LINE_0);
-    display_write(buf, DISPLAY_LINE_1);
+    int bike_wheel = 151; // 151 not correct, this should be circumference of bike wheel in inches
+    mph = (84.842 * rpm * 60) / 63360; // first part calculates inches per hour and second part is division 12x5280 for mph
+    printf("mph: %d\n",mph);
+    timer_started = false;
 	}
+  int zero_mph_threshold = read_timer() - time_start;
+  /* if 2 seconds have passed without any update in rpm then reset and mph is 0
+    (confirm how long it takes for 2 revolutions at 1 mph and set to below that time, arbirarily set to 10 seconds for now )
+    should be 12.5 rpm which means .207 rps and for one revolution to complete it will take 4.9s */
+    //TODO: confirm this is 10s
+  if (zero_mph_threshold > 10000000 && rpm_count <= 1 && time_start > 0){
+    printf("zero_mph_threshold\n");
+    rpm_count = 0;
+    mph = 0;
+    timer_started = false;
+  }
+  char buf[32] = {0};
+  snprintf(buf, 32, "%u", mph);
+  display_write(buf, DISPLAY_LINE_1);
   return mph;
 }
  
@@ -130,6 +150,7 @@ int main(void){
   //setup on board LED as temporary placeholder for led
   gpio_config(LED,OUTPUT);
   
+  display_write("speed mph", DISPLAY_LINE_0);
   int backlight_state = OFF;
   int previous_speed = 0;
   int acceleration = 0;
@@ -147,11 +168,12 @@ int main(void){
       // printf("speed constant or speeding up\n");
     }
     
-    if (backlight_state == OFF){
-      turnOffLED();
-    }
-    else if(backlight_state == ON){
+    if (backlight_state){
       turnOnLED();
+      nrf_delay_ms(1000);
+    }
+    else{
+      turnOffLED();
     }
   }
 }
