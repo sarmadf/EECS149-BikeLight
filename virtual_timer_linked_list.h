@@ -13,11 +13,10 @@
 typedef struct node_t {
 
     // *** Additional timer fields ***
-
-    // add your own variables here
-    virtual_timer_callback_t cb;
-    uint32_t interval;
+    virtual_timer_callback_t fn;
     bool repeated;
+    uint32_t duration;  
+  // add your own variables here
 
     // *** Do not edit below this line ***
 
