@@ -22,6 +22,7 @@
 #include "display.h"
 #include "buckler.h"
 #include "virtual_timer.h"
+#include "Ultrasonic.h"
 
 #define HALL_SENSOR 4
 #define LED 23
@@ -158,6 +159,8 @@ int main(void){
   while (1) {
     previous_speed = mph;
     update_speed();
+    long range = MeasureInInches();
+    printf("%lu \n",range);
     
     if (is_slowing_down(previous_speed,mph)){
       backlight_state = ON;
