@@ -38,7 +38,7 @@
 #include "nrf.h"
 #include "nrf_delay.h"
 #include <inttypes.h>
-uint32_t pin = 4;
+uint32_t pin = 2;
 
 static uint32_t MicrosDiff(uint32_t begin, uint32_t end)
 {
