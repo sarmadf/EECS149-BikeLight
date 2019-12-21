@@ -1,3 +1,5 @@
+#include <math.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <sys/time.h>
@@ -12,6 +14,7 @@
 #include "nrf_pwr_mgmt.h"
 #include "nrf_serial.h"
 #include "gpio.h"
+#include "nrf_drv_spi.h"
 #include "mpu9250.h"
 #include "display.h"
 #include "buckler.h"
@@ -198,6 +201,8 @@ int main(void) {
 	 APP_ERROR_CHECK(error_code);
   }
 
+  //nrfx_gpiote_out_init(TEST_LED, &out_config);
+
   // configure button and switch
   // input pin, trigger on either edge, low accuracy (allows low-power operation)
   nrfx_gpiote_in_config_t in_config = NRFX_GPIOTE_CONFIG_IN_SENSE_TOGGLE(false);
@@ -353,6 +358,7 @@ int main(void) {
 
 	  case LEFT:
 	  case RIGHT:
+
 		if (abs(getAngle(mpu9250_read_accelerometer())) > 40) {
 			inTurn = true;
 		}
